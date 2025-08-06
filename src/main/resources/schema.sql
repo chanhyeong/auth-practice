@@ -7,15 +7,14 @@ CREATE TABLE users (
     profile_image_url VARCHAR(500),
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- User roles table
 CREATE TABLE user_roles (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT NOT NULL,
-    role VARCHAR(50) NOT NULL DEFAULT 'USER',
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    role VARCHAR(50) NOT NULL DEFAULT 'USER'
 );
 
 -- OTP codes table
@@ -25,8 +24,7 @@ CREATE TABLE otp_codes (
     otp_code VARCHAR(6) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     is_used BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Refresh tokens table
@@ -35,8 +33,7 @@ CREATE TABLE refresh_tokens (
     user_id BIGINT NOT NULL,
     token VARCHAR(500) NOT NULL,
     expires_at TIMESTAMP NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Token blacklist table
@@ -54,8 +51,7 @@ CREATE TABLE oauth_providers (
     provider VARCHAR(50) NOT NULL,
     provider_user_id VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_provider_user (provider, provider_user_id)
+    UNIQUE (provider, provider_user_id)
 );
 
 -- Indexes for performance optimization

@@ -14,10 +14,10 @@ interface OtpCodeRepository : CrudRepository<OtpCode, Long> {
     fun findByOtpCodeAndUserIdAndIsUsedFalse(otpCode: String, userId: Long): OtpCode?
     
     @Modifying
-    @Query("UPDATE otp_codes SET is_used = true WHERE user_id = :userId AND is_used = false")
+    @Query("UPDATE OTP_CODES SET IS_USED = true WHERE USER_ID = :userId AND IS_USED = false")
     fun markAllAsUsedByUserId(userId: Long)
     
     @Modifying
-    @Query("DELETE FROM otp_codes WHERE expires_at < :now")
+    @Query("DELETE FROM OTP_CODES WHERE EXPIRES_AT < :now")
     fun deleteExpiredCodes(now: LocalDateTime)
 }

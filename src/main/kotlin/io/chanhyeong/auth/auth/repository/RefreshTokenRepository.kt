@@ -14,10 +14,10 @@ interface RefreshTokenRepository : CrudRepository<RefreshToken, Long> {
     fun findByUserId(userId: Long): List<RefreshToken>
     
     @Modifying
-    @Query("DELETE FROM refresh_tokens WHERE user_id = :userId")
+    @Query("DELETE FROM REFRESH_TOKENS WHERE USER_ID = :userId")
     fun deleteByUserId(userId: Long)
     
     @Modifying
-    @Query("DELETE FROM refresh_tokens WHERE expires_at < :now")
+    @Query("DELETE FROM REFRESH_TOKENS WHERE EXPIRES_AT < :now")
     fun deleteExpiredTokens(now: LocalDateTime)
 }
