@@ -3,6 +3,8 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { authAPI } from '@/lib/api';
+import { handleApiError } from '@/utils/errorHandler';
+import { ErrorMessage } from '@/components/ErrorMessage';
 
 function OtpPageContent() {
   const router = useRouter();
@@ -55,8 +57,10 @@ function OtpPageContent() {
       
       if (response.data.success) {
         // 토큰 저장
-        localStorage.setItem('accessToken', response.data.accessToken);
-        localStorage.setItem('refreshToken', response.data.refreshToken);
+        if (response.data.accessToken && response.data.refreshToken) {
+          localStorage.setItem('accessToken', response.data.accessToken);
+          localStorage.setItem('refreshToken', response.data.refreshToken);
+        }
         
         // 대시보드로 이동
         router.push('/dashboard');
@@ -64,10 +68,8 @@ function OtpPageContent() {
         setError(response.data.message || 'OTP 인증에 실패했습니다.');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message 
-        : 'OTP 인증 중 오류가 발생했습니다.';
-      setError(errorMessage || 'OTP 인증 중 오류가 발생했습니다.');
+      const errorInfo = handleApiError(err);
+      setError(errorInfo.message);
     } finally {
       setLoading(false);
     }
@@ -83,17 +85,17 @@ function OtpPageContent() {
       const response = await authAPI.generateOtp(Number(userId));
       
       if (response.data.success) {
-        setCurrentOtp(response.data.otpCode);
+        if (response.data.otpCode) {
+          setCurrentOtp(response.data.otpCode);
+        }
         setTimeLeft(60);
         setOtp('');
       } else {
         setError(response.data.message || '새 OTP 생성에 실패했습니다.');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message 
-        : '새 OTP 생성 중 오류가 발생했습니다.';
-      setError(errorMessage || '새 OTP 생성 중 오류가 발생했습니다.');
+      const errorInfo = handleApiError(err);
+      setError(errorInfo.message);
     } finally {
       setLoading(false);
     }
@@ -144,9 +146,7 @@ function OtpPageContent() {
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-3">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
+            <ErrorMessage error={error} />
           )}
 
           <form onSubmit={handleOtpSubmit} className="space-y-4">

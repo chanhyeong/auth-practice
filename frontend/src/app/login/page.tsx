@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { authAPI } from '@/lib/api';
+import { handleApiError } from '@/utils/errorHandler';
+import { ErrorMessage } from '@/components/ErrorMessage';
 
 interface LoginForm {
   email: string;
@@ -44,14 +46,12 @@ export default function LoginPage() {
       if (response.data.success && response.data.requiresOtp) {
         // OTP 인증이 필요한 경우
         router.push(`/otp?userId=${response.data.userId}&otpCode=${response.data.otpCode}`);
-      } else {
+      } else if (!response.data.success) {
         setError(response.data.message || '로그인에 실패했습니다.');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message 
-        : '로그인 중 오류가 발생했습니다.';
-      setError(errorMessage || '로그인 중 오류가 발생했습니다.');
+      const errorInfo = handleApiError(err);
+      setError(errorInfo.message);
     } finally {
       setLoading(false);
     }
@@ -76,9 +76,7 @@ export default function LoginPage() {
 
         <div className="mt-8 space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-3">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
+            <ErrorMessage error={error} />
           )}
 
           {currentStep === 'email' ? (

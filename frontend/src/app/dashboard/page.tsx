@@ -3,17 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { userAPI, authAPI } from '@/lib/api';
-
-interface UserProfile {
-  id: number;
-  email: string;
-  name: string;
-  profileImageUrl?: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  roles: string[];
-}
+import { UserProfile } from '@/types/api';
+import { handleApiError } from '@/utils/errorHandler';
+import { ErrorMessage } from '@/components/ErrorMessage';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -36,7 +28,8 @@ export default function DashboardPage() {
       const response = await userAPI.getProfile();
       setUser(response.data);
     } catch (err) {
-      setError('사용자 정보를 불러오는데 실패했습니다.');
+      const errorInfo = handleApiError(err);
+      setError(errorInfo.message);
       console.error('Profile fetch error:', err);
     } finally {
       setLoading(false);
@@ -49,7 +42,8 @@ export default function DashboardPage() {
         await authAPI.logout(user.id);
       }
     } catch {
-      // 로그아웃 오류 무시
+      console.warn('Logout API failed');
+      // 로그아웃 API 실패는 무시하고 로컬 로그아웃 진행
     } finally {
       // 로컬 스토리지에서 토큰 제거
       localStorage.removeItem('accessToken');
@@ -72,7 +66,7 @@ export default function DashboardPage() {
         expiresAt: new Date(payload.exp * 1000).toLocaleString('ko-KR'),
         hasRefreshToken: !!refreshToken
       };
-    } catch (err) {
+    } catch {
       return null;
     }
   };
@@ -122,9 +116,7 @@ export default function DashboardPage() {
                   사용자 정보
                 </h3>
                 {error && (
-                  <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
-                    <p className="text-sm text-red-600">{error}</p>
-                  </div>
+                  <ErrorMessage error={error} className="mb-4" />
                 )}
                 {user && (
                   <dl className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">

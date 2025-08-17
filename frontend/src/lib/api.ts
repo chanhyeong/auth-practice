@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { LoginResponse, OtpVerificationResponse, RegisterResponse, RefreshTokenResponse, GenerateOtpResponse, UserProfileResponse, UpdateUserResponse, ChangePasswordResponse } from '@/types/api';
 
 const API_BASE_URL = 'http://localhost:8080/api';
 
@@ -65,35 +66,35 @@ api.interceptors.response.use(
 // Auth API
 export const authAPI = {
   login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
+    api.post<LoginResponse>('/auth/login', { email, password }),
   
   verifyOtp: (userId: number, otpCode: string) =>
-    api.post('/auth/verify-otp', { userId, otpCode }),
+    api.post<OtpVerificationResponse>('/auth/verify-otp', { userId, otpCode }),
   
   generateOtp: (userId: number) =>
-    api.post('/auth/generate-otp', { userId }),
+    api.post<GenerateOtpResponse>('/auth/generate-otp', { userId }),
   
   register: (email: string, password: string, name: string) =>
-    api.post('/auth/register', { email, password, name }),
+    api.post<RegisterResponse>('/auth/register', { email, password, name }),
   
   refreshToken: (refreshToken: string) =>
-    api.post('/auth/refresh', { refreshToken }),
+    api.post<RefreshTokenResponse>('/auth/refresh', { refreshToken }),
   
   logout: (userId: number) =>
-    api.post(`/auth/logout?userId=${userId}`),
+    api.post<{ success: boolean; message: string }>(`/auth/logout?userId=${userId}`),
 };
 
 // User API
 export const userAPI = {
-  getProfile: () => api.get('/users/me'),
+  getProfile: () => api.get<UserProfileResponse>('/users/me'),
   
   updateProfile: (name?: string, profileImageUrl?: string) =>
-    api.put('/users/me', { name, profileImageUrl }),
+    api.put<UpdateUserResponse>('/users/me', { name, profileImageUrl }),
   
   changePassword: (currentPassword: string, newPassword: string) =>
-    api.post('/users/change-password', { currentPassword, newPassword }),
+    api.post<ChangePasswordResponse>('/users/change-password', { currentPassword, newPassword }),
   
-  deactivateAccount: () => api.delete('/users/me'),
+  deactivateAccount: () => api.delete<{ success: boolean; message: string }>('/users/me'),
 };
 
 export default api;

@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { authAPI } from '@/lib/api';
+import { handleApiError } from '@/utils/errorHandler';
+import { ErrorMessage } from '@/components/ErrorMessage';
 
 interface RegisterForm {
   name: string;
@@ -54,10 +56,8 @@ export default function RegisterPage() {
         setError(response.data.message || '회원가입에 실패했습니다.');
       }
     } catch (err) {
-      const errorMessage = err instanceof Error && 'response' in err 
-        ? (err as { response?: { data?: { message?: string } } }).response?.data?.message 
-        : '회원가입 중 오류가 발생했습니다.';
-      setError(errorMessage || '회원가입 중 오류가 발생했습니다.');
+      const errorInfo = handleApiError(err);
+      setError(errorInfo.message);
     } finally {
       setLoading(false);
     }
@@ -105,9 +105,7 @@ export default function RegisterPage() {
 
         <div className="mt-8 space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-3">
-              <p className="text-sm text-red-600">{error}</p>
-            </div>
+            <ErrorMessage error={error} />
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
