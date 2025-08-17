@@ -1,6 +1,8 @@
 package io.chanhyeong.auth.auth.controller
 
 import io.chanhyeong.auth.auth.dto.*
+import io.chanhyeong.auth.auth.exception.UserNotFoundException
+import io.chanhyeong.auth.auth.exception.InvalidPasswordException
 import io.chanhyeong.auth.auth.service.UserService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.security.SecurityRequirement
@@ -23,7 +25,7 @@ class UserController(
     fun getCurrentUser(authentication: Authentication): ResponseEntity<UserProfileResponse> {
         val email = authentication.name
         val user = userService.findByEmail(email)
-            ?: return ResponseEntity.notFound().build()
+            ?: throw UserNotFoundException("User not found with email: $email")
 
         val roles = userService.getUserRoles(user.id!!)
         
@@ -49,45 +51,31 @@ class UserController(
     ): ResponseEntity<UpdateUserResponse> {
         val email = authentication.name
         val user = userService.findByEmail(email)
-            ?: return ResponseEntity.notFound().build()
+            ?: throw UserNotFoundException("User not found with email: $email")
 
-        return try {
-            val updatedUser = userService.updateUser(
-                userId = user.id!!,
-                name = request.name,
-                profileImageUrl = request.profileImageUrl
-            )
+        val updatedUser = userService.updateUser(
+            userId = user.id!!,
+            name = request.name,
+            profileImageUrl = request.profileImageUrl
+        ) ?: throw RuntimeException("Failed to update user profile")
 
-            if (updatedUser != null) {
-                val roles = userService.getUserRoles(updatedUser.id!!)
-                val userProfile = UserProfileResponse(
-                    id = updatedUser.id,
-                    email = updatedUser.email,
-                    name = updatedUser.name,
-                    profileImageUrl = updatedUser.profileImageUrl,
-                    isActive = updatedUser.isActive,
-                    createdAt = updatedUser.createdAt,
-                    updatedAt = updatedUser.updatedAt,
-                    roles = roles
-                )
+        val roles = userService.getUserRoles(updatedUser.id!!)
+        val userProfile = UserProfileResponse(
+            id = updatedUser.id,
+            email = updatedUser.email,
+            name = updatedUser.name,
+            profileImageUrl = updatedUser.profileImageUrl,
+            isActive = updatedUser.isActive,
+            createdAt = updatedUser.createdAt,
+            updatedAt = updatedUser.updatedAt,
+            roles = roles
+        )
 
-                ResponseEntity.ok(UpdateUserResponse(
-                    success = true,
-                    message = "User profile updated successfully",
-                    user = userProfile
-                ))
-            } else {
-                ResponseEntity.badRequest().body(UpdateUserResponse(
-                    success = false,
-                    message = "Failed to update user profile"
-                ))
-            }
-        } catch (e: Exception) {
-            ResponseEntity.badRequest().body(UpdateUserResponse(
-                success = false,
-                message = "Update failed: ${e.message}"
-            ))
-        }
+        return ResponseEntity.ok(UpdateUserResponse(
+            success = true,
+            message = "User profile updated successfully",
+            user = userProfile
+        ))
     }
 
     @PostMapping("/change-password")
@@ -98,32 +86,22 @@ class UserController(
     ): ResponseEntity<ChangePasswordResponse> {
         val email = authentication.name
         val user = userService.findByEmail(email)
-            ?: return ResponseEntity.notFound().build()
+            ?: throw UserNotFoundException("User not found with email: $email")
 
-        return try {
-            val success = userService.changePassword(
-                userId = user.id!!,
-                currentPassword = request.currentPassword,
-                newPassword = request.newPassword
-            )
+        val success = userService.changePassword(
+            userId = user.id!!,
+            currentPassword = request.currentPassword,
+            newPassword = request.newPassword
+        )
 
-            if (success) {
-                ResponseEntity.ok(ChangePasswordResponse(
-                    success = true,
-                    message = "Password changed successfully"
-                ))
-            } else {
-                ResponseEntity.badRequest().body(ChangePasswordResponse(
-                    success = false,
-                    message = "Current password is incorrect"
-                ))
-            }
-        } catch (e: Exception) {
-            ResponseEntity.badRequest().body(ChangePasswordResponse(
-                success = false,
-                message = "Password change failed: ${e.message}"
-            ))
+        if (!success) {
+            throw InvalidPasswordException("Current password is incorrect")
         }
+
+        return ResponseEntity.ok(ChangePasswordResponse(
+            success = true,
+            message = "Password changed successfully"
+        ))
     }
 
     @DeleteMapping("/me")
@@ -131,27 +109,17 @@ class UserController(
     fun deactivateAccount(authentication: Authentication): ResponseEntity<Map<String, Any>> {
         val email = authentication.name
         val user = userService.findByEmail(email)
-            ?: return ResponseEntity.notFound().build()
+            ?: throw UserNotFoundException("User not found with email: $email")
 
-        return try {
-            val success = userService.deactivateUser(user.id!!)
+        val success = userService.deactivateUser(user.id!!)
 
-            if (success) {
-                ResponseEntity.ok(mapOf(
-                    "success" to true,
-                    "message" to "Account deactivated successfully"
-                ))
-            } else {
-                ResponseEntity.badRequest().body(mapOf(
-                    "success" to false,
-                    "message" to "Failed to deactivate account"
-                ))
-            }
-        } catch (e: Exception) {
-            ResponseEntity.badRequest().body(mapOf(
-                "success" to false,
-                "message" to "Account deactivation failed: ${e.message}"
-            ))
+        if (!success) {
+            throw RuntimeException("Failed to deactivate account")
         }
+
+        return ResponseEntity.ok(mapOf(
+            "success" to true,
+            "message" to "Account deactivated successfully"
+        ))
     }
 }

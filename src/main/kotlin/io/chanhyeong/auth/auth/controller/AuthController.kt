@@ -1,6 +1,9 @@
 package io.chanhyeong.auth.auth.controller
 
 import io.chanhyeong.auth.auth.dto.*
+import io.chanhyeong.auth.auth.exception.OtpException
+import io.chanhyeong.auth.auth.exception.ExceptionCode
+import io.chanhyeong.auth.auth.exception.UserAlreadyExistsException
 import io.chanhyeong.auth.auth.service.AuthService
 import io.chanhyeong.auth.auth.service.UserService
 import io.swagger.v3.oas.annotations.Operation
@@ -32,11 +35,7 @@ class AuthController(
             } else null
         )
         
-        return if (result.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+        return ResponseEntity.ok(response)
     }
 
     @PostMapping("/verify-otp")
@@ -51,54 +50,31 @@ class AuthController(
             refreshToken = result.refreshToken
         )
         
-        return if (result.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+        return ResponseEntity.ok(response)
     }
 
     @PostMapping("/generate-otp")
     @Operation(summary = "Generate new OTP", description = "Generate a new OTP code for the user")
     fun generateOtp(@Valid @RequestBody request: GenerateOtpRequest): ResponseEntity<GenerateOtpResponse> {
-        return try {
-            val otpCode = authService.generateNewOtp(request.userId)
-            
-            ResponseEntity.ok(GenerateOtpResponse(
-                success = true,
-                message = "New OTP generated successfully",
-                otpCode = otpCode
-            ))
-        } catch (e: Exception) {
-            ResponseEntity.badRequest().body(GenerateOtpResponse(
-                success = false,
-                message = "Failed to generate OTP: ${e.message}"
-            ))
-        }
+        val otpCode = authService.generateNewOtp(request.userId)
+        
+        return ResponseEntity.ok(GenerateOtpResponse(
+            success = true,
+            message = "New OTP generated successfully",
+            otpCode = otpCode
+        ))
     }
 
     @PostMapping("/register")
     @Operation(summary = "User registration", description = "Register a new user account")
     fun register(@Valid @RequestBody request: RegisterRequest): ResponseEntity<RegisterResponse> {
-        return try {
-            val user = userService.createUser(request.email, request.password, request.name)
-            
-            ResponseEntity.ok(RegisterResponse(
-                success = true,
-                message = "User registered successfully",
-                userId = user.id
-            ))
-        } catch (e: IllegalArgumentException) {
-            ResponseEntity.badRequest().body(RegisterResponse(
-                success = false,
-                message = e.message
-            ))
-        } catch (e: Exception) {
-            ResponseEntity.badRequest().body(RegisterResponse(
-                success = false,
-                message = "Registration failed: ${e.message}"
-            ))
-        }
+        val user = userService.createUser(request.email, request.password, request.name)
+        
+        return ResponseEntity.ok(RegisterResponse(
+            success = true,
+            message = "User registered successfully",
+            userId = user.id
+        ))
     }
 
     @PostMapping("/refresh")
@@ -112,28 +88,17 @@ class AuthController(
             accessToken = result.accessToken
         )
         
-        return if (result.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+        return ResponseEntity.ok(response)
     }
 
     @PostMapping("/logout")
     @Operation(summary = "User logout", description = "Logout user and invalidate tokens")
     fun logout(@RequestParam userId: Long): ResponseEntity<Map<String, Any>> {
-        return try {
-            authService.logout(userId)
-            
-            ResponseEntity.ok(mapOf(
-                "success" to true,
-                "message" to "Logout successful"
-            ))
-        } catch (e: Exception) {
-            ResponseEntity.badRequest().body(mapOf(
-                "success" to false,
-                "message" to "Logout failed: ${e.message}"
-            ))
-        }
+        authService.logout(userId)
+        
+        return ResponseEntity.ok(mapOf(
+            "success" to true,
+            "message" to "Logout successful"
+        ))
     }
 }

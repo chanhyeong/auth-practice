@@ -1,8 +1,9 @@
 package io.chanhyeong.auth.auth.exception
 
 import org.slf4j.LoggerFactory
+import org.springframework.context.MessageSource
+import org.springframework.context.i18n.LocaleContextHolder
 import org.springframework.dao.DataAccessException
-import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.core.AuthenticationException
@@ -13,9 +14,33 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.context.request.WebRequest
 
 @RestControllerAdvice
-class GlobalExceptionHandler {
+class GlobalExceptionHandler(
+    private val messageSource: MessageSource
+) {
     
     private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
+
+    @ExceptionHandler(BusinessException::class)
+    fun handleBusinessException(
+        ex: BusinessException,
+        request: WebRequest
+    ): ResponseEntity<ErrorResponse> {
+        logger.warn("Business exception: {}", ex.message)
+        
+        val message = ex.message ?: getLocalizedMessage(ex.code.messageKey)
+        
+        val errorResponse = ErrorResponse(
+            status = ex.code.httpStatus.value(),
+            error = ex.code.httpStatus.reasonPhrase,
+            message = message,
+            code = ex.code.name,
+            path = getPath(request)
+        )
+        
+        return ResponseEntity
+            .status(ex.code.httpStatus)
+            .body(errorResponse)
+    }
 
     @ExceptionHandler(Exception::class)
     fun handleGenericException(
@@ -25,15 +50,15 @@ class GlobalExceptionHandler {
         logger.error("Unexpected error occurred", ex)
         
         val errorResponse = ErrorResponse(
-            status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            error = "Internal Server Error",
-            message = "An unexpected error occurred",
-            timestamp = System.currentTimeMillis(),
+            status = ExceptionCode.INTERNAL_SERVER_ERROR.httpStatus.value(),
+            error = ExceptionCode.INTERNAL_SERVER_ERROR.httpStatus.reasonPhrase,
+            message = getLocalizedMessage(ExceptionCode.INTERNAL_SERVER_ERROR.messageKey),
+            code = ExceptionCode.INTERNAL_SERVER_ERROR.name,
             path = getPath(request)
         )
         
         return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .status(ExceptionCode.INTERNAL_SERVER_ERROR.httpStatus)
             .body(errorResponse)
     }
 
@@ -45,15 +70,15 @@ class GlobalExceptionHandler {
         logger.warn("IllegalArgumentException: {}", ex.message)
         
         val errorResponse = ErrorResponse(
-            status = HttpStatus.BAD_REQUEST.value(),
-            error = "Bad Request",
-            message = ex.message ?: "Invalid argument provided",
-            timestamp = System.currentTimeMillis(),
+            status = ExceptionCode.INVALID_INPUT.httpStatus.value(),
+            error = ExceptionCode.INVALID_INPUT.httpStatus.reasonPhrase,
+            message = ex.message ?: getLocalizedMessage(ExceptionCode.INVALID_INPUT.messageKey),
+            code = ExceptionCode.INVALID_INPUT.name,
             path = getPath(request)
         )
         
         return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
+            .status(ExceptionCode.INVALID_INPUT.httpStatus)
             .body(errorResponse)
     }
 
@@ -65,15 +90,15 @@ class GlobalExceptionHandler {
         logger.error("Database error occurred", ex)
         
         val errorResponse = ErrorResponse(
-            status = HttpStatus.INTERNAL_SERVER_ERROR.value(),
-            error = "Database Error",
-            message = "A database error occurred. Please try again later.",
-            timestamp = System.currentTimeMillis(),
+            status = ExceptionCode.DATABASE_ERROR.httpStatus.value(),
+            error = ExceptionCode.DATABASE_ERROR.httpStatus.reasonPhrase,
+            message = getLocalizedMessage(ExceptionCode.DATABASE_ERROR.messageKey),
+            code = ExceptionCode.DATABASE_ERROR.name,
             path = getPath(request)
         )
         
         return ResponseEntity
-            .status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .status(ExceptionCode.DATABASE_ERROR.httpStatus)
             .body(errorResponse)
     }
 
@@ -89,16 +114,16 @@ class GlobalExceptionHandler {
         }
         
         val errorResponse = ValidationErrorResponse(
-            status = HttpStatus.BAD_REQUEST.value(),
-            error = "Validation Failed",
-            message = "Request validation failed",
-            timestamp = System.currentTimeMillis(),
+            status = ExceptionCode.VALIDATION_FAILED.httpStatus.value(),
+            error = ExceptionCode.VALIDATION_FAILED.httpStatus.reasonPhrase,
+            message = getLocalizedMessage(ExceptionCode.VALIDATION_FAILED.messageKey),
+            code = ExceptionCode.VALIDATION_FAILED.name,
             path = getPath(request),
             fieldErrors = fieldErrors
         )
         
         return ResponseEntity
-            .status(HttpStatus.BAD_REQUEST)
+            .status(ExceptionCode.VALIDATION_FAILED.httpStatus)
             .body(errorResponse)
     }
 
@@ -109,83 +134,35 @@ class GlobalExceptionHandler {
     ): ResponseEntity<ErrorResponse> {
         logger.warn("Authentication failed: {}", ex.message)
         
+        val exceptionCode = when (ex) {
+            is BadCredentialsException -> ExceptionCode.INVALID_CREDENTIALS
+            else -> ExceptionCode.INVALID_CREDENTIALS
+        }
+        
         val errorResponse = ErrorResponse(
-            status = HttpStatus.UNAUTHORIZED.value(),
-            error = "Authentication Failed",
-            message = when (ex) {
-                is BadCredentialsException -> "Invalid credentials provided"
-                else -> "Authentication failed"
-            },
-            timestamp = System.currentTimeMillis(),
+            status = exceptionCode.httpStatus.value(),
+            error = exceptionCode.httpStatus.reasonPhrase,
+            message = getLocalizedMessage(exceptionCode.messageKey),
+            code = exceptionCode.name,
             path = getPath(request)
         )
         
         return ResponseEntity
-            .status(HttpStatus.UNAUTHORIZED)
+            .status(exceptionCode.httpStatus)
             .body(errorResponse)
     }
 
-    @ExceptionHandler(AccessDeniedException::class)
-    fun handleAccessDeniedException(
-        ex: AccessDeniedException,
-        request: WebRequest
-    ): ResponseEntity<ErrorResponse> {
-        logger.warn("Access denied: {}", ex.message)
-        
-        val errorResponse = ErrorResponse(
-            status = HttpStatus.FORBIDDEN.value(),
-            error = "Access Denied",
-            message = "You don't have permission to access this resource",
-            timestamp = System.currentTimeMillis(),
-            path = getPath(request)
-        )
-        
-        return ResponseEntity
-            .status(HttpStatus.FORBIDDEN)
-            .body(errorResponse)
-    }
-
-    @ExceptionHandler(ResourceNotFoundException::class)
-    fun handleResourceNotFoundException(
-        ex: ResourceNotFoundException,
-        request: WebRequest
-    ): ResponseEntity<ErrorResponse> {
-        logger.warn("Resource not found: {}", ex.message)
-        
-        val errorResponse = ErrorResponse(
-            status = HttpStatus.NOT_FOUND.value(),
-            error = "Not Found",
-            message = ex.message ?: "Resource not found",
-            timestamp = System.currentTimeMillis(),
-            path = getPath(request)
-        )
-        
-        return ResponseEntity
-            .status(HttpStatus.NOT_FOUND)
-            .body(errorResponse)
-    }
 
     private fun getPath(request: WebRequest): String {
         return request.getDescription(false).removePrefix("uri=")
     }
+    
+    private fun getLocalizedMessage(messageKey: String, vararg args: Any): String {
+        return try {
+            messageSource.getMessage(messageKey, args, LocaleContextHolder.getLocale())
+        } catch (e: Exception) {
+            messageKey
+        }
+    }
 }
 
-data class ErrorResponse(
-    val status: Int,
-    val error: String,
-    val message: String,
-    val timestamp: Long,
-    val path: String
-)
-
-data class ValidationErrorResponse(
-    val status: Int,
-    val error: String,
-    val message: String,
-    val timestamp: Long,
-    val path: String,
-    val fieldErrors: Map<String, String>
-)
-
-class ResourceNotFoundException(message: String) : RuntimeException(message)
-class AccessDeniedException(message: String) : RuntimeException(message)
